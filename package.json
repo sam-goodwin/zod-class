@@ -1,0 +1,28 @@
+{
+  "name": "zod-class",
+  "description": "Create classes from Zod Object schemas all in one line",
+  "version": "0.0.0",
+  "exports": {
+    ".": {
+      "import": "./lib/esm/index.js",
+      "require": "./lib/cjs/index.js"
+    }
+  },
+  "main": "./lib/cjs/index.js",
+  "module": "./lib/esm/index.js",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "watch": "tsc -b -w"
+  },
+  "peerDependencies": {
+    "zod": "^3"
+  },
+  "devDependencies": {
+    "@types/node": "^16",
+    "zod": "3.20.2",
+    "@tsconfig/node16": "^1.0.3"
+  }
+}
