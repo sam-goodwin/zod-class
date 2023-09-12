@@ -44,7 +44,7 @@ test("support extending classes", () => {
     });
 
     const forty: "Forty" = bar.getBaz();
-    // @ts-expect-error
+    // @ts-expect-error - should be narrowed to "Forty"
     const two: "Two" = bar.getBaz();
   }).toThrow();
 
