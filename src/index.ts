@@ -5,6 +5,7 @@ import {
   ZodType,
   ParseParams,
   SafeParseReturnType,
+  z,
 } from "zod";
 
 type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (
@@ -17,14 +18,41 @@ type ZodValue<T extends ZodType> = T extends ZodType<infer Output>
   ? UnionToIntersection<Output>
   : never;
 
-export interface ZodClass<T extends ZodRawShape>
+type Ctor<Shape extends ZodRawShape = ZodRawShape, Self = any> = {
+  shape: Shape;
+  schema: ZodObject<Shape>;
+  new (input: any): Self;
+};
+
+export function $<Super extends Ctor>(
+  Super: Super
+): {
+  extend<Shape extends ZodRawShape>(
+    shape: Shape
+  ): ZodClass<Omit<Super["shape"], keyof Shape> & Shape, InstanceType<Super>>;
+} {
+  return {
+    extend<Shape extends ZodRawShape>(augmentation: Shape) {
+      const augmented = Super.schema.extend(augmentation);
+      // @ts-ignore
+      return class extends Super {
+        static schema = augmented;
+        constructor(value: any) {
+          super(value);
+          Object.assign(this, augmented.parse(value));
+        }
+      } as any;
+    },
+  };
+}
+
+export interface ZodClass<T extends ZodRawShape, Self = {}>
   extends Omit<
     ZodObject<T>,
-    "parse" | "parseAsync" | "safeParse" | "safeParseAsync" | "extend"
+    "parse" | "parseAsync" | "safeParse" | "safeParseAsync"
   > {
-  extend<U extends ZodRawShape>(
-    augmentation: U
-  ): ZodClass<Omit<T, keyof U> & U>;
+  shape: T;
+  schema: ZodObject<T>;
   parse<T extends InstanceType<this> = InstanceType<this>>(value: unknown): T;
   parseAsync<Output extends InstanceType<this> = InstanceType<this>>(
     value: unknown
@@ -37,7 +65,7 @@ export interface ZodClass<T extends ZodRawShape>
     value: unknown
   ): Promise<SafeParseReturnType<ZodValue<ZodObject<T>>, Output>>;
 
-  new(data: ZodValue<ZodObject<T>>): ZodValue<ZodObject<T>>;
+  new (data: ZodValue<ZodObject<T>>): Self & ZodValue<ZodObject<T>>;
 }
 
 /**
@@ -59,18 +87,6 @@ export function ZodClass<T extends ZodRawShape>(shape: T): ZodClass<T> {
   const _schema = object(shape);
   return class {
     static schema = _schema;
-    static extend(augmentation: ZodRawShape) {
-      const augmented = this.schema.extend(augmentation);
-      // @ts-ignore
-      return class extends this {
-        static schema = augmented;
-        constructor(value: ZodValue<ZodObject<T>>) {
-          super(value);
-          Object.assign(this, augmented.parse(value));
-        }
-      };
-    }
-
     static parse(value: unknown, params?: Partial<ParseParams>) {
       return new this(this.schema.parse(value, params) as any);
     }
@@ -86,7 +102,7 @@ export function ZodClass<T extends ZodRawShape>(shape: T): ZodClass<T> {
       params?: Partial<ParseParams>
     ): SafeParseReturnType<any, any> {
       return coerceSafeParse(
-        this as any as ZodClass<T>,
+        (this as any) as ZodClass<T>,
         this.schema.safeParse(value, params)
       );
     }
@@ -97,7 +113,9 @@ export function ZodClass<T extends ZodRawShape>(shape: T): ZodClass<T> {
     ): Promise<SafeParseReturnType<any, any>> {
       return this.schema
         .safeParseAsync(value, params)
-        .then((result) => coerceSafeParse(this as any as ZodClass<T>, result));
+        .then((result) =>
+          coerceSafeParse((this as any) as ZodClass<T>, result)
+        );
     }
 
     constructor(value: ZodValue<ZodObject<T>>) {
