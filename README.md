@@ -10,16 +10,28 @@ npm install zod-class
 
 ## Usage
 
+
 ```ts
 import z from "zod";
 import { ZodClass } from "zod-class";
 
-export class HelloSchema extends ZodClass({
-  key: z.string(),
+// define a class using a zod schema
+export class Hello extends ZodClass({
+  hello: z.string(),
 }) {}
 
-const hello = new HelloSchema({
-  key: "key",
+const hello = new Hello({
+  hello: "sam",
+});
+
+// extend a class
+export class World extends Hello.extend({
+  world: z.string()
+}) {}
+
+const world = new World({
+  hello: "world",
+  world: "hello"
 });
 ```
 

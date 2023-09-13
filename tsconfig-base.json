@@ -10,6 +10,6 @@
     "esModuleInterop": true,
     "sourceMap": true,
     "target": "ES2021",
-    "types": ["@types/node"]
+    "types": ["@types/node", "@types/jest"]
   }
 }
