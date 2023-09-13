@@ -48,7 +48,6 @@ test("support extending classes", () => {
     const two: "Two" = bar.getBaz();
   }).toThrow();
 
-
   const bar = new Bar({
     foo: "foo",
     bar: 1,
@@ -70,37 +69,36 @@ test("support extending classes", () => {
   expect(bar.getBaz()).toEqual(parsedBar.getBaz());
 });
 
-
 test("should inherit class methods", () => {
   class Foo extends ZodClass({
-    foo: z.string()
+    foo: z.string(),
   }) {
     getFoo() {
       return this.foo;
     }
   }
-  
+
   class Bar extends $(Foo).extend({
-    foo: z.literal('forty-two'),
-    bar: z.number()
+    foo: z.literal("forty-two"),
+    bar: z.number(),
   }) {
     getBar() {
       return this.bar;
     }
   }
-  
+
   const barSchema = {
-    foo: 'forty-two',
+    foo: "forty-two",
     bar: 42,
-  }
-  
+  };
+
   const bar = Bar.parse<Bar>(barSchema);
 
-  expect(bar.getFoo()).toEqual("forty-two")
-  expect(bar.getBar()).toEqual(42)
+  expect(bar.getFoo()).toEqual("forty-two");
+  expect(bar.getBar()).toEqual(42);
 
   class Baz extends $(Bar).extend({
-    baz: z.string()
+    baz: z.string(),
   }) {
     getFoo() {
       return `foo: ${super.getFoo()}`;
@@ -112,10 +110,10 @@ test("should inherit class methods", () => {
 
   const baz = new Baz({
     bar: 42,
-    foo: 'forty-two',
-    baz: 'baz'
-  })
+    foo: "forty-two",
+    baz: "baz",
+  });
 
-  expect(baz.getFoo()).toEqual("foo: forty-two")
-  expect(baz.getBaz()).toEqual("baz")
-})
+  expect(baz.getFoo()).toEqual("foo: forty-two");
+  expect(baz.getBaz()).toEqual("baz");
+});
