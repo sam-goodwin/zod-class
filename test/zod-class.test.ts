@@ -70,7 +70,7 @@ test("support extending classes", () => {
 });
 
 test("should inherit class methods", () => {
-  class Foo extends ZodClass({
+  class Foo extends $({
     foo: z.string(),
   }) {
     getFoo() {
@@ -92,7 +92,7 @@ test("should inherit class methods", () => {
     bar: 42,
   };
 
-  const bar = Bar.parse<Bar>(barSchema);
+  const bar = $(Bar).parse(barSchema);
 
   expect(bar.getFoo()).toEqual("forty-two");
   expect(bar.getBar()).toEqual(42);
