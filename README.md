@@ -54,7 +54,6 @@ const world = new World({
 });
 ```
 
-
 ## Why?
 
 It can be annoying to always have redundant declarations for types and schemas:

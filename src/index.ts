@@ -94,6 +94,7 @@ export interface ZodClass<T extends ZodRawShape, Self = {}>
  * ```
  * @param shape
  * @returns
+ * @deprecated - use {@link $}({ shape }) instead
  */
 export function ZodClass<T extends ZodRawShape>(shape: T): ZodClass<T> {
   const _schema = object(shape);
