@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ZodClass, $ } from "../src/index.js";
+import { ZodClass, Z } from "../src/index.js";
 
 test("support extending classes", () => {
   class Foo extends ZodClass({
@@ -21,7 +21,7 @@ test("support extending classes", () => {
   expect(parsedFoo instanceof Foo).toBe(true);
   expect(foo).toMatchObject(parsedFoo);
 
-  class Bar extends $(Foo).extend({
+  class Bar extends Z(Foo).extend({
     baz: z.literal("Forty"),
   }) {
     getFoo() {
@@ -70,7 +70,7 @@ test("support extending classes", () => {
 });
 
 test("should inherit class methods", () => {
-  class Foo extends ZodClass({
+  class Foo extends Z({
     foo: z.string(),
   }) {
     getFoo() {
@@ -78,7 +78,7 @@ test("should inherit class methods", () => {
     }
   }
 
-  class Bar extends $(Foo).extend({
+  class Bar extends Z(Foo).extend({
     foo: z.literal("forty-two"),
     bar: z.number(),
   }) {
@@ -92,16 +92,16 @@ test("should inherit class methods", () => {
     bar: 42,
   };
 
-  const bar = Bar.parse<Bar>(barSchema);
+  const bar = Z(Bar).parse(barSchema);
 
   expect(bar.getFoo()).toEqual("forty-two");
   expect(bar.getBar()).toEqual(42);
 
-  class Baz extends $(Bar).extend({
+  class Baz extends Z(Bar).extend({
     baz: z.string(),
   }) {
     getFoo() {
-      return `foo: ${super.getFoo()}`;
+      return `foo: Z{super.getFoo()}`;
     }
     getBaz() {
       return this.baz;

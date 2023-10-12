@@ -10,22 +10,41 @@ npm install zod-class
 
 ## Usage
 
+The `$` utility function is the swiss army knife in `zod-class` - you use it for everything.
+
+1. Define a new class
 
 ```ts
 import z from "zod";
-import { ZodClass } from "zod-class";
+import { Z } from "zod-class";
 
 // define a class using a zod schema
-export class Hello extends ZodClass({
-  hello: z.string(),
-}) {}
+export class Hello extends Z({
+  name: z.string(),
+}) {
+  get message() {
+    return `hello ${name}`
+  }
+}
 
 const hello = new Hello({
   hello: "sam",
 });
+```
 
-// extend a class
-export class World extends Hello.extend({
+2. Parse a value to an instance of a ZodClass
+```ts
+const hello = Z(Hello).parse(someVal)
+
+// use method on the instance 
+const message = hello.message;
+```
+
+3. Extend a class
+
+```ts
+// extend a class by first activating it with `Z(Hello)`
+export class World extends Z(Hello).extend({
   world: z.string()
 }) {}
 
@@ -64,25 +83,3 @@ export class Person extends ZodClass({
 }
 ```
 
-## Caveats
-
-Caveat: the static `HelloSchema.parse`'s return type does not accurately reflect that it returns an instance of the created class,
-
-```ts
-const unknownValue: unknown;
-
-// we wish it was `HelloSchema`, not `{ key: string }`.
-const hello2: {
-  key: string;
-} = HelloSchema.parse(unknownValue);
-```
-
-Workaround: just cast it
-
-```ts
-// option 1
-const hello: HelloSchema = HelloSchema.parse(unknownValue);
-
-// option 2
-const hello = HelloSchema.parse<HelloSchema>(unknownValue);
-```

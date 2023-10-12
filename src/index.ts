@@ -5,45 +5,56 @@ import {
   ZodType,
   ParseParams,
   SafeParseReturnType,
-  z,
 } from "zod";
 
-type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (
-  x: infer R
-) => any
-  ? R
-  : never;
-
-type ZodValue<T extends ZodType> = T extends ZodType<infer Output>
-  ? UnionToIntersection<Output>
-  : never;
+const IS_ZOD_CLASS = Symbol.for("zod-class");
 
 type Ctor<Shape extends ZodRawShape = ZodRawShape, Self = any> = {
+  [IS_ZOD_CLASS]: true;
   shape: Shape;
   schema: ZodObject<Shape>;
+  parse(value: unknown): Self;
   new (input: any): Self;
 };
 
-export function $<Super extends Ctor>(
+export function isZodClass(a: any): a is Ctor {
+  return typeof a === "function" && a[IS_ZOD_CLASS];
+}
+
+export function Z<Shape extends ZodRawShape = ZodRawShape>(
+  shape: Shape
+): ZodClass<Shape>;
+
+export function Z<Super extends Ctor>(
   Super: Super
 ): {
+  parse(value: unknown): InstanceType<Super>;
   extend<Shape extends ZodRawShape>(
     shape: Shape
   ): ZodClass<Omit<Super["shape"], keyof Shape> & Shape, InstanceType<Super>>;
-} {
-  return {
-    extend<Shape extends ZodRawShape>(augmentation: Shape) {
-      const augmented = Super.schema.extend(augmentation);
-      // @ts-ignore
-      return class extends Super {
-        static schema = augmented;
-        constructor(value: any) {
-          super(value);
-          Object.assign(this, augmented.parse(value));
-        }
-      } as any;
-    },
-  };
+};
+
+export function Z(shapeOrSuper: any) {
+  if (isZodClass(shapeOrSuper)) {
+    const Super = shapeOrSuper;
+    return {
+      parse(value: unknown) {
+        return Super.parse(value) as any;
+      },
+      extend<Shape extends ZodRawShape>(augmentation: Shape) {
+        const augmented = Super.schema.extend(augmentation);
+        // @ts-ignore
+        return class extends Super {
+          static schema = augmented;
+          constructor(value: any) {
+            super(value);
+            Object.assign(this, augmented.parse(value));
+          }
+        } as any;
+      },
+    };
+  }
+  return ZodClass(shapeOrSuper);
 }
 
 export interface ZodClass<T extends ZodRawShape, Self = {}>
@@ -51,6 +62,7 @@ export interface ZodClass<T extends ZodRawShape, Self = {}>
     ZodObject<T>,
     "parse" | "parseAsync" | "safeParse" | "safeParseAsync"
   > {
+  [IS_ZOD_CLASS]: true;
   shape: T;
   schema: ZodObject<T>;
   parse<T extends InstanceType<this> = InstanceType<this>>(value: unknown): T;
@@ -82,10 +94,12 @@ export interface ZodClass<T extends ZodRawShape, Self = {}>
  * ```
  * @param shape
  * @returns
+ * @deprecated - use {@link Z}({ shape }) instead
  */
 export function ZodClass<T extends ZodRawShape>(shape: T): ZodClass<T> {
   const _schema = object(shape);
   return class {
+    static [IS_ZOD_CLASS]: true = true;
     static schema = _schema;
     static parse(value: unknown, params?: Partial<ParseParams>) {
       return new this(this.schema.parse(value, params) as any);
@@ -137,3 +151,13 @@ function coerceSafeParse<C extends ZodClass<any>>(
     return result;
   }
 }
+
+type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (
+  x: infer R
+) => any
+  ? R
+  : never;
+
+type ZodValue<T extends ZodType> = T extends ZodType<infer Output>
+  ? UnionToIntersection<Output>
+  : never;
