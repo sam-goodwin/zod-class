@@ -21,10 +21,6 @@ export function isZodClass(a: any): a is Ctor {
   return typeof a === "function" && a[IS_ZOD_CLASS];
 }
 
-export function Z<Shape extends ZodRawShape = ZodRawShape>(
-  shape: Shape
-): ZodClass<Shape>;
-
 export function Z<Super extends Ctor>(
   Super: Super
 ): {
@@ -32,29 +28,23 @@ export function Z<Super extends Ctor>(
   extend<Shape extends ZodRawShape>(
     shape: Shape
   ): ZodClass<Omit<Super["shape"], keyof Shape> & Shape, InstanceType<Super>>;
-};
-
-export function Z(shapeOrSuper: any) {
-  if (isZodClass(shapeOrSuper)) {
-    const Super = shapeOrSuper;
-    return {
-      parse(value: unknown) {
-        return Super.parse(value) as any;
-      },
-      extend<Shape extends ZodRawShape>(augmentation: Shape) {
-        const augmented = Super.schema.extend(augmentation);
-        // @ts-ignore
-        return class extends Super {
-          static schema = augmented;
-          constructor(value: any) {
-            super(value);
-            Object.assign(this, augmented.parse(value));
-          }
-        } as any;
-      },
-    };
-  }
-  return ZodClass(shapeOrSuper);
+} {
+  return {
+    parse(value: unknown) {
+      return Super.parse(value) as any;
+    },
+    extend<Shape extends ZodRawShape>(augmentation: Shape) {
+      const augmented = Super.schema.extend(augmentation);
+      // @ts-ignore
+      return class extends Super {
+        static schema = augmented;
+        constructor(value: any) {
+          super(value);
+          Object.assign(this, augmented.parse(value));
+        }
+      } as any;
+    },
+  };
 }
 
 export interface ZodClass<T extends ZodRawShape, Self = {}>
@@ -94,9 +84,8 @@ export interface ZodClass<T extends ZodRawShape, Self = {}>
  * ```
  * @param shape
  * @returns
- * @deprecated - use {@link Z}({ shape }) instead
  */
-export function ZodClass<T extends ZodRawShape>(shape: T): ZodClass<T> {
+Z["class"] = function <T extends ZodRawShape>(shape: T): ZodClass<T> {
   const _schema = object(shape);
   return class {
     static [IS_ZOD_CLASS]: true = true;
@@ -136,7 +125,7 @@ export function ZodClass<T extends ZodRawShape>(shape: T): ZodClass<T> {
       Object.assign(this, _schema.parse(value));
     }
   } as any;
-}
+};
 
 function coerceSafeParse<C extends ZodClass<any>>(
   clazz: C,

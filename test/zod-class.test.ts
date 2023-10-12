@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { ZodClass, Z } from "../src/index.js";
+import { Z } from "../src/index.js";
 
 test("support extending classes", () => {
-  class Foo extends ZodClass({
+  class Foo extends Z.class({
     foo: z.string(),
     bar: z.number(),
     baz: z.enum(["Forty", "Two"]),
@@ -70,7 +70,7 @@ test("support extending classes", () => {
 });
 
 test("should inherit class methods", () => {
-  class Foo extends Z({
+  class Foo extends Z.class({
     foo: z.string(),
   }) {
     getFoo() {

@@ -10,7 +10,7 @@ npm install zod-class
 
 ## Usage
 
-The `$` utility function is the swiss army knife in `zod-class` - you use it for everything.
+The `Z` utility function is the swiss army knife in `zod-class` - you use it for everything.
 
 1. Define a new class
 
@@ -19,7 +19,7 @@ import z from "zod";
 import { Z } from "zod-class";
 
 // define a class using a zod schema
-export class Hello extends Z({
+export class Hello extends Z.class({
   name: z.string(),
 }) {
   get message() {
@@ -73,7 +73,7 @@ const HelloSchema = z.object({
 It also provides a class that can be instantiated and methods added to.
 
 ```ts
-export class Person extends ZodClass({
+export class Person extends Z.class({
   firstName: z.string(),
   lastName: z.string(),
 }) {
