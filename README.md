@@ -16,10 +16,10 @@ The `$` utility function is the swiss army knife in `zod-class` - you use it for
 
 ```ts
 import z from "zod";
-import { $ } from "zod-class";
+import { Z } from "zod-class";
 
 // define a class using a zod schema
-export class Hello extends $({
+export class Hello extends Z({
   name: z.string(),
 }) {
   get message() {
@@ -34,7 +34,7 @@ const hello = new Hello({
 
 2. Parse a value to an instance of a ZodClass
 ```ts
-const hello = $(Hello).parse(someVal)
+const hello = Z(Hello).parse(someVal)
 
 // use method on the instance 
 const message = hello.message;
@@ -43,8 +43,8 @@ const message = hello.message;
 3. Extend a class
 
 ```ts
-// extend a class by first activating it with `$(Hello)`
-export class World extends $(Hello).extend({
+// extend a class by first activating it with `Z(Hello)`
+export class World extends Z(Hello).extend({
   world: z.string()
 }) {}
 

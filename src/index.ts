@@ -21,11 +21,11 @@ export function isZodClass(a: any): a is Ctor {
   return typeof a === "function" && a[IS_ZOD_CLASS];
 }
 
-export function $<Shape extends ZodRawShape = ZodRawShape>(
+export function Z<Shape extends ZodRawShape = ZodRawShape>(
   shape: Shape
 ): ZodClass<Shape>;
 
-export function $<Super extends Ctor>(
+export function Z<Super extends Ctor>(
   Super: Super
 ): {
   parse(value: unknown): InstanceType<Super>;
@@ -34,7 +34,7 @@ export function $<Super extends Ctor>(
   ): ZodClass<Omit<Super["shape"], keyof Shape> & Shape, InstanceType<Super>>;
 };
 
-export function $(shapeOrSuper: any) {
+export function Z(shapeOrSuper: any) {
   if (isZodClass(shapeOrSuper)) {
     const Super = shapeOrSuper;
     return {
@@ -94,7 +94,7 @@ export interface ZodClass<T extends ZodRawShape, Self = {}>
  * ```
  * @param shape
  * @returns
- * @deprecated - use {@link $}({ shape }) instead
+ * @deprecated - use {@link Z}({ shape }) instead
  */
 export function ZodClass<T extends ZodRawShape>(shape: T): ZodClass<T> {
   const _schema = object(shape);
