@@ -5,7 +5,6 @@ import {
   ZodType,
   ParseParams,
   SafeParseReturnType,
-  z,
 } from "zod";
 
 const IS_ZOD_CLASS = Symbol.for("zod-class");
