@@ -21,7 +21,17 @@ export function isZodClass(a: any): a is Ctor {
   return typeof a === "function" && a[IS_ZOD_CLASS];
 }
 
-export function Z<Super extends Ctor>(
+export interface Z {
+  class<T extends ZodRawShape>(shape: T): ZodClass<T>;
+  <Super extends Ctor>(Super: Super): {
+    parse(value: unknown): InstanceType<Super>;
+    extend<Shape extends ZodRawShape>(
+      shape: Shape
+    ): ZodClass<Omit<Super["shape"], keyof Shape> & Shape, InstanceType<Super>>;
+  };
+}
+
+export const Z = (function <Super extends Ctor>(
   Super: Super
 ): {
   parse(value: unknown): InstanceType<Super>;
@@ -45,7 +55,7 @@ export function Z<Super extends Ctor>(
       } as any;
     },
   };
-}
+} as any) as Z;
 
 export interface ZodClass<T extends ZodRawShape, Self = {}>
   extends Omit<
