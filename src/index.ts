@@ -12,10 +12,12 @@ import {
   ZodSet,
   ZodFunction,
   ZodLazy,
-  type z,
+  z,
   ZodPromise,
   ZodOptional,
   ZodNullable,
+  SyncParseReturnType,
+  AsyncParseReturnType,
 } from "zod";
 
 const IS_ZOD_CLASS = Symbol.for("zod-class");
@@ -28,10 +30,13 @@ export interface ZodClass<Properties, Instance> extends ZodType<Instance> {
   extend<Super extends Ctor, Shape extends ZodRawShape>(
     this: Super,
     shape: Shape
-  ): ZodClass<
-    Z.infer<ZodObject<Shape>> & ConstructorParameters<Super>[0],
-    Z.infer<ZodObject<Shape>> & InstanceType<Super>
-  >;
+  ): {
+    [k in keyof Super]: Super[k];
+  } &
+    ZodClass<
+      Z.infer<ZodObject<Shape>> & ConstructorParameters<Super>[0],
+      Z.infer<ZodObject<Shape>> & InstanceType<Super>
+    >;
   parse<T>(this: Ctor<T>, value: unknown): T;
   parseAsync<T>(this: Ctor<T>, value: unknown): Promise<T>;
   safeParse<T, V>(this: Ctor<T>, value: V): SafeParseReturnType<V, T>;
@@ -117,13 +122,23 @@ export const Z = {
       static extend<Shape extends ZodRawShape>(augmentation: Shape) {
         const augmented = this.schema.extend(augmentation);
         // @ts-ignore
-        return class extends Super {
+        return class extends this {
           static schema = augmented;
           constructor(value: any) {
             super(value);
             Object.assign(this, augmented.parse(value));
           }
         } as any;
+      }
+
+      static _parse = this.schema._parse.bind(this.schema);
+      static _parseSync = this.schema._parseSync.bind(this.schema);
+
+      static optional() {
+        return new ZodOptional(this as any);
+      }
+      static nullable() {
+        return new ZodNullable(this as any);
       }
 
       static parse(value: unknown, params?: Partial<ParseParams>) {
@@ -155,7 +170,6 @@ export const Z = {
           .then((result) => coerceSafeParse(this as any, result));
       }
     };
-    Object.assign(clazz, _schema);
     return clazz as any;
   },
 };

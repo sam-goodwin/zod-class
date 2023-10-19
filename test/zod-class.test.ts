@@ -107,7 +107,7 @@ test("should inherit class methods", () => {
     baz: z.string(),
   }) {
     getFoo() {
-      return `foo: Z{super.getFoo()}`;
+      return `foo: ${super.getFoo()}`;
     }
     getBaz() {
       return this.baz;
@@ -151,10 +151,32 @@ test("should support classes as properties in an object", () => {
     Baz,
     Bar: Bar.optional(),
     bar: Bar.nullable(),
+    barNullableOptional: Bar.nullable().optional(),
+    barOptionalNullable: Bar.optional().nullable(),
   });
   type XYZ = Z.infer<typeof XYZ>;
   const xyz: XYZ = {
     bar,
     Baz: baz,
   };
+});
+
+test("static methods should be inherited", () => {
+  class Foo extends Z.class({
+    foo: z.string(),
+  }) {
+    static GetFoo() {
+      return "foo";
+    }
+  }
+  class Bar extends Foo.extend({
+    bar: z.number(),
+  }) {
+    static GetBar() {
+      return 42;
+    }
+  }
+
+  expect(Bar.GetFoo()).toEqual("foo");
+  expect(Bar.GetBar()).toEqual(42);
 });
