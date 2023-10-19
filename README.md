@@ -10,8 +10,6 @@ npm install zod-class
 
 ## Usage
 
-The `Z` utility function is the swiss army knife in `zod-class` - you use it for everything.
-
 1. Define a new class
 
 ```ts
@@ -22,7 +20,7 @@ import { Z } from "zod-class";
 export class Hello extends Z.class({
   name: z.string(),
 }) {
-  get message() {
+  get getMessage() {
     return `hello ${name}`
   }
 }
@@ -34,17 +32,16 @@ const hello = new Hello({
 
 2. Parse a value to an instance of a ZodClass
 ```ts
-const hello = Z(Hello).parse(someVal)
+const hello = Hello.parse(someVal)
 
 // use method on the instance 
-const message = hello.message;
+const message = hello.getMessage();
 ```
 
 3. Extend a class
 
 ```ts
-// extend a class by first activating it with `Z(Hello)`
-export class World extends Z(Hello).extend({
+export class World extends Hello.extend({
   world: z.string()
 }) {}
 
