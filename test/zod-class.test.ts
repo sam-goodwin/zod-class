@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { ZodRawShape, z } from "zod";
 import { Z } from "../src/index.js";
 
 test("support extending classes", () => {
@@ -13,7 +13,8 @@ test("support extending classes", () => {
     bar: 1,
     baz: "Two",
   });
-  const parsedFoo = Foo.parse<Foo>({
+
+  const parsedFoo = Foo.parse({
     foo: "foo",
     bar: 1,
     baz: "Two",
@@ -21,7 +22,7 @@ test("support extending classes", () => {
   expect(parsedFoo instanceof Foo).toBe(true);
   expect(foo).toMatchObject(parsedFoo);
 
-  class Bar extends Z(Foo).extend({
+  class Bar extends Foo.extend({
     baz: z.literal("Forty"),
   }) {
     getFoo() {
@@ -55,7 +56,7 @@ test("support extending classes", () => {
   });
 
   expect(bar instanceof Bar).toBe(true);
-  const parsedBar = Bar.parse<Bar>({
+  const parsedBar = Bar.parse({
     foo: "foo",
     bar: 1,
     baz: "Forty",
@@ -78,7 +79,7 @@ test("should inherit class methods", () => {
     }
   }
 
-  class Bar extends Z(Foo).extend({
+  class Bar extends Foo.extend({
     foo: z.literal("forty-two"),
     bar: z.number(),
   }) {
@@ -87,21 +88,26 @@ test("should inherit class methods", () => {
     }
   }
 
+  const B = Foo.extend({
+    foo: z.literal("forty-two"),
+    bar: z.number(),
+  });
+
   const barSchema = {
     foo: "forty-two",
     bar: 42,
   };
 
-  const bar = Z(Bar).parse(barSchema);
+  const bar = Bar.parse(barSchema);
 
   expect(bar.getFoo()).toEqual("forty-two");
   expect(bar.getBar()).toEqual(42);
 
-  class Baz extends Z(Bar).extend({
+  class Baz extends Bar.extend({
     baz: z.string(),
   }) {
     getFoo() {
-      return `foo: Z{super.getFoo()}`;
+      return `foo: ${super.getFoo()}`;
     }
     getBaz() {
       return this.baz;
@@ -116,4 +122,61 @@ test("should inherit class methods", () => {
 
   expect(baz.getFoo()).toEqual("foo: forty-two");
   expect(baz.getBaz()).toEqual("baz");
+});
+
+test("should support classes as properties in an object", () => {
+  class Foo extends Z.class({
+    foo: z.string(),
+  }) {}
+
+  class Bar extends Z.class({
+    Foo,
+    list: z.array(Foo),
+  }) {}
+
+  const bar = new Bar({
+    Foo: new Foo({ foo: "foo" }),
+    list: [new Foo({ foo: "foo" })],
+  });
+
+  class Baz extends Z.class({
+    foobar: z.tuple([Foo, Bar]),
+  }) {}
+
+  const baz = new Baz({
+    foobar: [new Foo({ foo: "foo" }), bar],
+  });
+
+  const XYZ = z.object({
+    Baz,
+    Bar: Bar.optional(),
+    bar: Bar.nullable(),
+    barNullableOptional: Bar.nullable().optional(),
+    barOptionalNullable: Bar.optional().nullable(),
+  });
+  type XYZ = Z.infer<typeof XYZ>;
+  const xyz: XYZ = {
+    bar,
+    Baz: baz,
+  };
+});
+
+test("static methods should be inherited", () => {
+  class Foo extends Z.class({
+    foo: z.string(),
+  }) {
+    static GetFoo() {
+      return "foo";
+    }
+  }
+  class Bar extends Foo.extend({
+    bar: z.number(),
+  }) {
+    static GetBar() {
+      return 42;
+    }
+  }
+
+  expect(Bar.GetFoo()).toEqual("foo");
+  expect(Bar.GetBar()).toEqual(42);
 });
