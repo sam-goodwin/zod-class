@@ -39,9 +39,6 @@ export interface ZodClass<Members, Instance, Shape extends ZodRawShape>
       Z.infer<ZodObject<ChildShape>> & ConstructorParameters<Super>[0],
       Z.infer<ZodObject<ChildShape>> & InstanceType<Super>,
       Omit<Shape, keyof ChildShape> & ChildShape
-      // {
-      //   [k in keyof Super]: Super[k];
-      // }
     >;
   parse<T>(this: Ctor<T>, value: unknown): T;
   parseAsync<T>(this: Ctor<T>, value: unknown): Promise<T>;
@@ -121,7 +118,6 @@ export const Z = {
     },
     Z.infer<ZodObject<T>>,
     T
-    // {}
   > {
     const _schema = object(shape);
     const clazz = class {
