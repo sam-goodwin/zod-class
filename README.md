@@ -87,6 +87,8 @@ const HelloSchema = z.object({
 
 `zod-class` enables this to be achieved in a single line.
 
+It also provides a class that can be instantiated and methods added to.
+
 ```ts
 export class Person extends Z.class({
   firstName: z.string(),
