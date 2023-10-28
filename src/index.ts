@@ -82,7 +82,7 @@ export declare namespace Z {
         [k in Z.infer<Key>]: Z.infer<Value>;
       }
     : T extends ZodMap<infer Key, infer Value>
-    ? [T, Map<Z.infer<Key>, Z.infer<Value>>]
+    ? Map<Z.infer<Key>, Z.infer<Value>>
     : T extends ZodSet<infer Item>
     ? Set<Z.infer<Item>>
     : T extends ZodFunction<infer Args, infer Output>
