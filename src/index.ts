@@ -1,24 +1,25 @@
+import tf, { PascalCase } from "type-fest";
+
 import {
-  object,
-  ZodObject,
-  ZodRawShape,
-  ZodType,
   ParseParams,
   SafeParseReturnType,
   ZodArray,
-  ZodTuple,
-  ZodRecord,
-  ZodMap,
-  ZodSet,
   ZodFunction,
   ZodLazy,
-  z,
-  ZodPromise,
-  ZodOptional,
+  ZodMap,
   ZodNullable,
-  SyncParseReturnType,
-  AsyncParseReturnType,
+  ZodObject,
+  ZodOptional,
+  ZodPromise,
+  ZodRawShape,
+  ZodRecord,
+  ZodSet,
+  ZodTuple,
+  ZodType,
+  object,
+  z,
 } from "zod";
+import { toPascalCase } from "./to-pascal-case.js";
 
 const IS_ZOD_CLASS = Symbol.for("zod-class");
 
@@ -26,16 +27,21 @@ type Ctor<T = any> = {
   new (input: any): T;
 };
 
-export interface ZodClass<Properties, Instance> extends ZodType<Instance> {
-  extend<Super extends Ctor, Shape extends ZodRawShape>(
+export interface ZodClass<Members, Instance, Shape extends ZodRawShape>
+  extends ZodType<Instance> {
+  shape: Shape;
+  extend<Super extends Ctor, ChildShape extends ZodRawShape>(
     this: Super,
-    shape: Shape
-  ): {
+    shape: ChildShape
+  ): StaticProperties<ChildShape> & {
     [k in keyof Super]: Super[k];
-  } &
-    ZodClass<
-      Z.infer<ZodObject<Shape>> & ConstructorParameters<Super>[0],
-      Z.infer<ZodObject<Shape>> & InstanceType<Super>
+  } & ZodClass<
+      Z.infer<ZodObject<ChildShape>> & ConstructorParameters<Super>[0],
+      Z.infer<ZodObject<ChildShape>> & InstanceType<Super>,
+      Omit<Shape, keyof ChildShape> & ChildShape
+      // {
+      //   [k in keyof Super]: Super[k];
+      // }
     >;
   parse<T>(this: Ctor<T>, value: unknown): T;
   parseAsync<T>(this: Ctor<T>, value: unknown): Promise<T>;
@@ -47,7 +53,7 @@ export interface ZodClass<Properties, Instance> extends ZodType<Instance> {
   optional<Self extends ZodType>(this: Self): ZodOptional<Self>;
   nullable<Self extends ZodType>(this: Self): ZodNullable<Self>;
 
-  new (data: Properties): Instance;
+  new (data: Members): Instance;
 }
 
 type OptionalKeys<Shape> = {
@@ -63,10 +69,9 @@ export declare namespace Z {
           Shape,
           Exclude<keyof Shape, OptionalKeys<Shape>>
         >]: Z.infer<Shape[k]>;
-      } &
-        {
-          [k in OptionalKeys<Shape>]+?: Z.infer<Shape[k]>;
-        }
+      } & {
+        [k in OptionalKeys<Shape>]+?: Z.infer<Shape[k]>;
+      }
     : T extends ZodArray<infer I>
     ? Z.infer<I>[]
     : T extends ZodOptional<infer T>
@@ -80,7 +85,7 @@ export declare namespace Z {
         [k in Z.infer<Key>]: Z.infer<Value>;
       }
     : T extends ZodMap<infer Key, infer Value>
-    ? Map<Z.infer<Key>, Z.infer<Value>>
+    ? [T, Map<Z.infer<Key>, Z.infer<Value>>]
     : T extends ZodSet<infer Item>
     ? Set<Z.infer<Item>>
     : T extends ZodFunction<infer Args, infer Output>
@@ -94,20 +99,29 @@ export declare namespace Z {
     : never;
 }
 
+type StaticProperties<Shape extends ZodRawShape> = {
+  [property in keyof Shape as PascalCase<property>]: Shape[property];
+};
+
 export interface Z {
-  class<T extends ZodRawShape>(
-    shape: T
-  ): ZodClass<Z.infer<ZodObject<T>>, Z.infer<ZodObject<T>>>;
+  class<Shape extends ZodRawShape>(
+    shape: Shape
+  ): StaticProperties<Shape> &
+    ZodClass<Z.infer<ZodObject<Shape>>, Z.infer<ZodObject<Shape>>, Shape>;
 }
 
 export const Z = {
   class<T extends ZodRawShape>(
     shape: T
-  ): ZodClass<
+  ): {
+    [property in keyof T as PascalCase<property>]: T[property];
+  } & ZodClass<
     {
       [k in keyof T]: Z.infer<T[k]>;
     },
-    Z.infer<ZodObject<T>>
+    Z.infer<ZodObject<T>>,
+    T
+    // {}
   > {
     const _schema = object(shape);
     const clazz = class {
@@ -122,13 +136,15 @@ export const Z = {
       static extend<Shape extends ZodRawShape>(augmentation: Shape) {
         const augmented = this.schema.extend(augmentation);
         // @ts-ignore
-        return class extends this {
+        const clazz = class extends this {
           static schema = augmented;
           constructor(value: any) {
             super(value);
             Object.assign(this, augmented.parse(value));
           }
         } as any;
+        Object.assign(clazz, getStaticMembers(augmentation));
+        return clazz;
       }
 
       static _parse = this.schema._parse.bind(this.schema);
@@ -170,11 +186,18 @@ export const Z = {
           .then((result) => coerceSafeParse(this as any, result));
       }
     };
+    Object.assign(clazz, getStaticMembers(shape));
     return clazz as any;
   },
 };
 
-function coerceSafeParse<C extends ZodClass<any, any>>(
+function getStaticMembers(shape: ZodRawShape) {
+  return Object.fromEntries(
+    Object.entries(shape).map(([key, value]) => [toPascalCase(key), value])
+  );
+}
+
+function coerceSafeParse<C extends ZodClass<any, any, any>>(
   clazz: C,
   result: SafeParseReturnType<any, any>
 ): SafeParseReturnType<any, InstanceType<C>> {
