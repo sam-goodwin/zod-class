@@ -1,6 +1,6 @@
 # zod-class
 
-This is a small utility library to accompany [Zod](https://github.com/colinhacks/zod) to enable for Types and Schemas to be defined in one line by creating a Class.
+This is a small utility library to accompany [Zod](https://github.com/colinhacks/zod) that enables Types and Schemas to be defined in one line by creating a Class.
 
 ## Installation
 
@@ -49,6 +49,26 @@ const world = new World({
   hello: "world",
   world: "hello"
 });
+```
+
+4. Access A ZodClass's property to re-use in other schemas
+
+```ts
+import { z } from "zod";
+import { Z } from "zod-class";
+
+export class Product extends Z.class({
+  id: z.string().brand<"ProductId">,
+  price: z.number().min(1)
+}) {}
+
+export class Order extends Z.class({
+  id: z.string().brand<"OrderId">,
+  productId: Product.shape.id // 👈 Re-using the branded type `id` from `Product` class 
+}) {}
+
+
+Product.Id // 👈 Properties are also available in friendly pascal case directly on the class constructor
 ```
 
 ## Why?

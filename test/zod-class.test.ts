@@ -31,7 +31,7 @@ test("support extending classes", () => {
     getBar() {
       return this.bar;
     }
-    getBaz() {
+    getBaz(): this["baz"] {
       return this.baz;
     }
   }
@@ -133,6 +133,7 @@ test("should support classes as properties in an object", () => {
     Foo,
     list: z.array(Foo),
   }) {}
+  Bar.shape.list;
 
   const bar = new Bar({
     Foo: new Foo({ foo: "foo" }),
@@ -179,4 +180,91 @@ test("static methods should be inherited", () => {
 
   expect(Bar.GetFoo()).toEqual("foo");
   expect(Bar.GetBar()).toEqual(42);
+});
+
+// see: https://github.com/sam-goodwin/zod-class/issues/14
+test("should be able to reference a ZodClass's property schemas", () => {
+  class Product extends Z.class({
+    id: z.string().brand("ProductId"),
+    price: z.number().min(1),
+  }) {}
+
+  class Order extends Z.class({
+    id: z.string().brand("OrderId"),
+    productId: Product.shape.id, // 👈 Re-using the branded type `id` from `Product` class
+  }) {
+    public getMessage() {
+      return [this.id, this.productId];
+    }
+  }
+
+  const o1 = new Order({
+    // @ts-expect-error
+    id: "1",
+    // @ts-expect-error
+    productId: "2",
+  });
+  expect(o1.getMessage()).toEqual(["1", "2"]);
+
+  const o2 = new Order({
+    id: Order.shape.id.parse("3"),
+    productId: Order.shape.productId.parse("4"),
+  });
+
+  expect(o2.getMessage()).toEqual(["3", "4"]);
+
+  // nice auto-type alias for the typeof Order.Id
+  type OrderID = typeof Order.Id;
+
+  const o3 = new Order({
+    id: Order.Id.parse("5"),
+    productId: Order.ProductId.parse("6"),
+  });
+
+  expect(o3.getMessage()).toEqual(["5", "6"]);
+});
+
+test("static properties should plumb through", () => {
+  class Foo extends Z.class({
+    id: z.string(),
+  }) {}
+  class Bar extends Foo.extend({
+    bar: z.number(),
+  }) {}
+
+  Foo.Id;
+  Bar.Id;
+  expect(Foo.Id.parse("a")).toEqual("a");
+  expect(Bar.Id.parse("b")).toEqual("b");
+  expect(Bar.Bar.parse(42)).toEqual(42);
+});
+
+test("map type", () => {
+  class Foo extends Z.class({
+    map: z.map(z.string(), z.number()),
+  }) {}
+
+  new Foo({
+    map: new Map<string, number>(),
+  });
+  new Foo({
+    // @ts-expect-error
+    map: new Map<number, number>(),
+  });
+  new Foo({
+    // @ts-expect-error
+    map: new Map<string, string>(),
+  });
+
+  const foo = new Foo({
+    map: new Map([["", 2]]),
+  });
+
+  expect(foo.map.get("")).toEqual(2);
+
+  const map: Map<string, number> = foo.map;
+  // @ts-expect-error
+  const map2: Map<number, number> = foo.map;
+  // @ts-expect-error
+  const map3: Map<string, string> = foo.map;
 });
