@@ -238,3 +238,33 @@ test("static properties should plumb through", () => {
   expect(Bar.Id.parse("b")).toEqual("b");
   expect(Bar.Bar.parse(42)).toEqual(42);
 });
+
+test("map type", () => {
+  class Foo extends Z.class({
+    map: z.map(z.string(), z.number()),
+  }) {}
+
+  new Foo({
+    map: new Map<string, number>(),
+  });
+  new Foo({
+    // @ts-expect-error
+    map: new Map<number, number>(),
+  });
+  new Foo({
+    // @ts-expect-error
+    map: new Map<string, string>(),
+  });
+
+  const foo = new Foo({
+    map: new Map([["", 2]]),
+  });
+
+  expect(foo.map.get("")).toEqual(2);
+
+  const map: Map<string, number> = foo.map;
+  // @ts-expect-error
+  const map2: Map<number, number> = foo.map;
+  // @ts-expect-error
+  const map3: Map<string, string> = foo.map;
+});
