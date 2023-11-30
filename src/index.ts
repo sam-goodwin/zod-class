@@ -1,10 +1,15 @@
-import tf, { PascalCase } from "type-fest";
+import { PascalCase } from "type-fest";
 
 import {
+  ParseInput,
   ParseParams,
+  RefinementCtx,
   SafeParseReturnType,
+  SyncParseReturnType,
   ZodArray,
+  ZodEffects,
   ZodFunction,
+  ZodIntersection,
   ZodLazy,
   ZodMap,
   ZodNullable,
@@ -16,6 +21,8 @@ import {
   ZodSet,
   ZodTuple,
   ZodType,
+  ZodTypeAny,
+  ZodUnion,
   object,
   z,
 } from "zod";
@@ -27,9 +34,49 @@ type Ctor<T = any> = {
   new (input: any): T;
 };
 
-export interface ZodClass<Members, Instance, Shape extends ZodRawShape>
-  extends ZodType<Instance> {
+export interface ZodClass<
+  Members = any,
+  Instance = any,
+  Shape extends ZodRawShape = ZodRawShape
+> extends ZodType<Instance> {
   shape: Shape;
+
+  pick<Mask extends keyof Shape>(...mask: Mask[]): Z.Class<Pick<Shape, Mask>>;
+  pick<
+    Mask extends {
+      [property in keyof Shape]?: true | undefined;
+    }
+  >(
+    mask: Mask
+  ): Z.Class<
+    Pick<
+      Shape,
+      {
+        [property in keyof Mask]: Mask[property] extends true
+          ? Extract<property, keyof Shape>
+          : never;
+      }[keyof Mask]
+    >
+  >;
+
+  omit<Mask extends keyof Shape>(...mask: Mask[]): Z.Class<Omit<Shape, Mask>>;
+  omit<
+    Mask extends {
+      [property in keyof Shape]?: true | undefined;
+    }
+  >(
+    mask: Mask
+  ): Z.Class<
+    Omit<
+      Shape,
+      {
+        [property in keyof Mask]: Mask[property] extends true
+          ? Extract<property, keyof Shape>
+          : never;
+      }[keyof Mask]
+    >
+  >;
+  schema<T>(this: Ctor<T>): z.ZodType<T>;
   extend<Super extends Ctor, ChildShape extends ZodRawShape>(
     this: Super,
     shape: ChildShape
@@ -40,6 +87,21 @@ export interface ZodClass<Members, Instance, Shape extends ZodRawShape>
       Z.infer<ZodObject<ChildShape>> & InstanceType<Super>,
       Omit<Shape, keyof ChildShape> & ChildShape
     >;
+
+  optional<Self extends ZodType>(this: Self): ZodOptional<Self>;
+  nullable<Self extends ZodType>(this: Self): ZodNullable<Self>;
+  nullish<Self extends ZodType>(this: Self): ZodNullable<ZodOptional<Self>>;
+  array<Self extends ZodType>(this: Self): ZodArray<Self>;
+  promise<Self extends ZodType>(this: Self): ZodPromise<Self>;
+  or<Self extends ZodType, Other extends ZodType>(
+    this: Self,
+    other: Other
+  ): ZodUnion<[Self, Other]>;
+  and<Self extends ZodType, Other extends ZodType>(
+    this: Self,
+    other: Other
+  ): ZodIntersection<Self, Other>;
+
   parse<T>(this: Ctor<T>, value: unknown): T;
   parseAsync<T>(this: Ctor<T>, value: unknown): Promise<T>;
   safeParse<T, V>(this: Ctor<T>, value: V): SafeParseReturnType<V, T>;
@@ -47,8 +109,6 @@ export interface ZodClass<Members, Instance, Shape extends ZodRawShape>
     this: Ctor<T>,
     value: V
   ): Promise<SafeParseReturnType<V, T>>;
-  optional<Self extends ZodType>(this: Self): ZodOptional<Self>;
-  nullable<Self extends ZodType>(this: Self): ZodNullable<Self>;
 
   new (data: Members): Instance;
 }
@@ -101,9 +161,11 @@ type StaticProperties<Shape extends ZodRawShape> = {
 };
 
 export interface Z {
-  class<Shape extends ZodRawShape>(
-    shape: Shape
-  ): StaticProperties<Shape> &
+  class<Shape extends ZodRawShape>(shape: Shape): Z.Class<Shape>;
+}
+
+export declare namespace Z {
+  export type Class<Shape extends ZodRawShape> = StaticProperties<Shape> &
     ZodClass<Z.infer<ZodObject<Shape>>, Z.infer<ZodObject<Shape>>, Shape>;
 }
 
@@ -122,15 +184,19 @@ export const Z = {
     const _schema = object(shape);
     const clazz = class {
       static [IS_ZOD_CLASS]: true = true;
-      static schema = _schema;
+      static schema() {
+        return this;
+      }
       static shape = shape;
 
       constructor(value: ZodValue<ZodObject<T>>) {
         Object.assign(this, _schema.parse(value));
       }
 
+      static merge = this.extend.bind(this);
+
       static extend<Shape extends ZodRawShape>(augmentation: Shape) {
-        const augmented = this.schema.extend(augmentation);
+        const augmented = _schema.extend(augmentation);
         // @ts-ignore
         const clazz = class extends this {
           static schema = augmented;
@@ -143,41 +209,147 @@ export const Z = {
         return clazz;
       }
 
-      static _parse = this.schema._parse.bind(this.schema);
-      static _parseSync = this.schema._parseSync.bind(this.schema);
+      // can NOT create a sub-type
+      static pick(
+        mask:
+          | string
+          | {
+              [key in keyof typeof _schema]: true | undefined;
+            },
+        ...masks: string[]
+      ) {
+        if (typeof mask === "string") {
+          return Z.class(
+            _schema.pick({
+              [mask]: true,
+              ...Object.fromEntries(masks.map((m) => [m, true])),
+            } as {
+              [key in keyof typeof _schema]: true | undefined;
+            }).shape
+          );
+        } else {
+          return Z.class(_schema.pick(mask).shape);
+        }
+      }
 
+      static omit(
+        mask:
+          | string
+          | {
+              [key in keyof typeof _schema]: true | undefined;
+            },
+        ...masks: string[]
+      ) {
+        if (typeof mask === "string") {
+          return Z.class(
+            _schema.omit({
+              [mask]: true,
+              ...Object.fromEntries(masks.map((m) => [m, true])),
+            } as {
+              [key in keyof typeof _schema]: true | undefined;
+            }).shape
+          );
+        } else {
+          return Z.class(_schema.omit(mask).shape);
+        }
+      }
+      static partial = _schema.partial.bind(_schema);
+      static deepPartial = _schema.deepPartial.bind(_schema);
+      static passthrough = _schema.passthrough.bind(_schema);
+      static keyof = _schema.keyof.bind(_schema);
+
+      // CAN create a sub-type
+      static required() {
+        return this.extend(_schema.required().shape);
+      }
+      static strict() {
+        return this.extend(_schema.strict().shape);
+      }
+      static strip() {
+        return this.extend(_schema.strip().shape);
+      }
+      static catchall(type: any) {
+        return this.extend(_schema.catchall(type).shape);
+      }
+
+      // combinators
       static optional() {
         return new ZodOptional(this as any);
       }
       static nullable() {
         return new ZodNullable(this as any);
       }
+      static nullish() {
+        return this.optional().nullable();
+      }
+      static array() {
+        return new ZodArray(this as any);
+      }
+      static promise() {
+        return new ZodPromise(this as any);
+      }
+
+      static or(other: ZodType) {
+        return z.union([this as any, other]);
+      }
+
+      static and(other: ZodType) {
+        return z.intersection(this as any, other);
+      }
+
+      // TODO:
+      // static transform()
+      // static default
+      // static brand
+      // static catch
+
+      static describe(description: string) {}
 
       static parse(value: unknown, params?: Partial<ParseParams>) {
-        return new this(this.schema.parse(value, params) as any);
+        return new this(_schema.parse(value, params) as any);
       }
 
       static parseAsync(value: unknown, params?: Partial<ParseParams>) {
-        return this.schema
+        return _schema
           .parseAsync(value, params)
           .then((value) => new this(value as any));
+      }
+
+      static _parse(input: ParseInput) {
+        return new this(_schema._parse(input) as any);
+      }
+
+      static _parseSync(input: ParseInput) {
+        return this._processParseResult(_schema._parseSync(input));
+      }
+
+      static _parseAsync(input: ParseInput) {
+        return _schema._parseAsync(input).then(this._processParseResult);
+      }
+
+      static _processParseResult(result: SyncParseReturnType<any>) {
+        if (result.status === "valid" || result.status === "dirty") {
+          return {
+            status: result.status,
+            value: new this(result.value as any),
+          };
+        } else {
+          return result;
+        }
       }
 
       static safeParse(
         value: unknown,
         params?: Partial<ParseParams>
       ): SafeParseReturnType<any, any> {
-        return coerceSafeParse(
-          this as any,
-          this.schema.safeParse(value, params)
-        );
+        return coerceSafeParse(this as any, _schema.safeParse(value, params));
       }
 
       static safeParseAsync(
         value: unknown,
         params?: Partial<ParseParams>
       ): Promise<SafeParseReturnType<any, any>> {
-        return this.schema
+        return _schema
           .safeParseAsync(value, params)
           .then((result) => coerceSafeParse(this as any, result));
       }

@@ -88,11 +88,6 @@ test("should inherit class methods", () => {
     }
   }
 
-  const B = Foo.extend({
-    foo: z.literal("forty-two"),
-    bar: z.number(),
-  });
-
   const barSchema = {
     foo: "forty-two",
     bar: 42,
@@ -267,4 +262,196 @@ test("map type", () => {
   const map2: Map<number, number> = foo.map;
   // @ts-expect-error
   const map3: Map<string, string> = foo.map;
+});
+
+type DTO<T> = {
+  save(item: T): Promise<void>;
+};
+
+test("ZodClass.schema() is a valid ZodSchema", async () => {
+  function createZodDto<T>(schema: z.ZodType<T>): DTO<T> {
+    return {
+      async save(item: T) {},
+    };
+  }
+
+  class User extends Z.class({
+    username: z.string(),
+  }) {
+    getUsername() {
+      return this.username;
+    }
+  }
+
+  const userDTO = createZodDto(User.schema());
+
+  await userDTO.save(
+    new User({
+      username: "sam",
+    })
+  );
+
+  const user = User.schema().parse({
+    username: "user",
+  });
+
+  expect(user.getUsername()).toEqual("user");
+});
+
+test("ZodClass.pick returns a new Class hierarchy", () => {
+  class User extends Z.class({
+    username: z.string(),
+    password: z.string(),
+    age: z.number(),
+  }) {}
+
+  class Age extends User.pick({
+    age: true,
+  }) {
+    getAge() {
+      return this.age;
+    }
+  }
+
+  const age = new Age({
+    age: 1,
+  });
+  expect(age.getAge()).toEqual(1);
+
+  expect(age instanceof User).toBe(false);
+
+  () => {
+    // @ts-expect-error - Age is not an instance of User
+    age.getUsername();
+  };
+});
+
+test("ZodClass.pick supports string literals", () => {
+  class User extends Z.class({
+    username: z.string(),
+    password: z.string(),
+    age: z.number(),
+  }) {}
+
+  class Age extends User.pick("age") {
+    getAge() {
+      return this.age;
+    }
+  }
+
+  const age = new Age({
+    age: 1,
+  });
+  expect(age.getAge()).toEqual(1);
+
+  expect(age instanceof User).toBe(false);
+
+  () => {
+    // @ts-expect-error - Age is not an instance of User
+    age.getUsername();
+  };
+});
+
+test("ZodClass.omit returns a new Class hierarchy", () => {
+  class User extends Z.class({
+    username: z.string(),
+    password: z.string(),
+    age: z.number(),
+  }) {}
+
+  class EternalUser extends User.omit({
+    age: true,
+  }) {
+    getCredentials() {
+      return `${this.username}:${this.password}`;
+    }
+  }
+
+  const eternalUser = new EternalUser({
+    username: "fully grown adult",
+    password: "my little pony",
+  });
+  expect(eternalUser.getCredentials()).toEqual(
+    `fully grown adult:my little pony`
+  );
+
+  expect(eternalUser instanceof User).toBe(false);
+
+  () => {
+    // @ts-expect-error - Age is not an instance of User
+    eternalUser.getUsername();
+  };
+});
+
+test("ZodClass.omit supports string literals", () => {
+  class User extends Z.class({
+    username: z.string(),
+    password: z.string(),
+    age: z.number(),
+  }) {}
+
+  class EternalUser extends User.omit("age") {
+    getCredentials() {
+      return `${this.username}:${this.password}`;
+    }
+  }
+
+  const eternalUser = new EternalUser({
+    username: "fully grown adult",
+    password: "my little pony",
+  });
+  expect(eternalUser.getCredentials()).toEqual(
+    `fully grown adult:my little pony`
+  );
+
+  expect(eternalUser instanceof User).toBe(false);
+
+  () => {
+    // @ts-expect-error - Age is not an instance of User
+    eternalUser.getUsername();
+  };
+});
+
+test("User.or(Person)", () => {
+  class User extends Z.class({
+    username: z.string(),
+  }) {}
+  class Person extends Z.class({
+    name: z.string(),
+  }) {}
+
+  const UserOrPerson = User.or(Person);
+
+  const user = UserOrPerson.parse({
+    username: "user",
+  });
+
+  const person = UserOrPerson.parse({
+    name: "sam",
+  });
+
+  expect(user).toBeInstanceOf(User);
+  expect(person).toBeInstanceOf(Person);
+});
+
+test("z.union([User, Person])", () => {
+  class User extends Z.class({
+    username: z.string(),
+  }) {}
+  class Person extends Z.class({
+    name: z.string(),
+  }) {}
+
+  const UserOrPerson = z.union([User, Person]);
+
+  const user = UserOrPerson.parse({
+    username: "user",
+  });
+
+  const person = UserOrPerson.parse({
+    name: "sam",
+  });
+
+  expect(user).toBeInstanceOf(User);
+  expect(person).toBeInstanceOf(Person);
 });
