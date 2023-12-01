@@ -3,6 +3,7 @@ import { PascalCase } from "type-fest";
 import {
   ParseInput,
   ParseParams,
+  ParseReturnType,
   RefinementCtx,
   SafeParseReturnType,
   SyncParseReturnType,
@@ -27,6 +28,7 @@ import {
   z,
 } from "zod";
 import { toPascalCase } from "./to-pascal-case.js";
+import { isPromise } from "util/types";
 
 const IS_ZOD_CLASS = Symbol.for("zod-class");
 
@@ -88,9 +90,9 @@ export interface ZodClass<
       Omit<Shape, keyof ChildShape> & ChildShape
     >;
 
-  optional<Self extends ZodType>(this: Self): ZodOptional<Self>;
-  nullable<Self extends ZodType>(this: Self): ZodNullable<Self>;
-  nullish<Self extends ZodType>(this: Self): ZodNullable<ZodOptional<Self>>;
+  optional<Self extends ZodTypeAny>(this: Self): ZodOptional<Self>;
+  nullable<Self extends ZodTypeAny>(this: Self): ZodNullable<Self>;
+
   array<Self extends ZodType>(this: Self): ZodArray<Self>;
   promise<Self extends ZodType>(this: Self): ZodPromise<Self>;
   or<Self extends ZodType, Other extends ZodType>(
@@ -104,11 +106,16 @@ export interface ZodClass<
 
   parse<T>(this: Ctor<T>, value: unknown): T;
   parseAsync<T>(this: Ctor<T>, value: unknown): Promise<T>;
-  safeParse<T, V>(this: Ctor<T>, value: V): SafeParseReturnType<V, T>;
+  safeParse<T>(
+    this: Ctor<T>,
+    data: unknown,
+    params?: Partial<ParseParams>
+  ): SafeParseReturnType<Instance, T>;
   safeParseAsync<T, V>(
     this: Ctor<T>,
-    value: V
-  ): Promise<SafeParseReturnType<V, T>>;
+    data: unknown,
+    params?: Partial<ParseParams>
+  ): Promise<SafeParseReturnType<Instance, T>>;
 
   new (data: Members): Instance;
 }
@@ -181,25 +188,27 @@ export const Z = {
     Z.infer<ZodObject<T>>,
     T
   > {
-    const _schema = object(shape);
     const clazz = class {
       static [IS_ZOD_CLASS]: true = true;
       static schema() {
         return this;
       }
       static shape = shape;
+      static _schema = object(shape);
 
       constructor(value: ZodValue<ZodObject<T>>) {
-        Object.assign(this, _schema.parse(value));
+        Object.assign(this, clazz._schema.parse(value));
       }
 
       static merge = this.extend.bind(this);
 
       static extend<Shape extends ZodRawShape>(augmentation: Shape) {
-        const augmented = _schema.extend(augmentation);
+        const augmented = this._schema.extend(augmentation);
         // @ts-ignore
         const clazz = class extends this {
-          static schema = augmented;
+          static shape = augmented.shape;
+          static _schema = augmented;
+
           constructor(value: any) {
             super(value);
             Object.assign(this, augmented.parse(value));
@@ -214,21 +223,21 @@ export const Z = {
         mask:
           | string
           | {
-              [key in keyof typeof _schema]: true | undefined;
+              [key in keyof typeof this._schema]: true | undefined;
             },
         ...masks: string[]
       ) {
         if (typeof mask === "string") {
           return Z.class(
-            _schema.pick({
+            this._schema.pick({
               [mask]: true,
               ...Object.fromEntries(masks.map((m) => [m, true])),
             } as {
-              [key in keyof typeof _schema]: true | undefined;
+              [key in keyof typeof this._schema]: true | undefined;
             }).shape
           );
         } else {
-          return Z.class(_schema.pick(mask).shape);
+          return Z.class(this._schema.pick(mask).shape);
         }
       }
 
@@ -236,40 +245,40 @@ export const Z = {
         mask:
           | string
           | {
-              [key in keyof typeof _schema]: true | undefined;
+              [key in keyof typeof this._schema]: true | undefined;
             },
         ...masks: string[]
       ) {
         if (typeof mask === "string") {
           return Z.class(
-            _schema.omit({
+            this._schema.omit({
               [mask]: true,
               ...Object.fromEntries(masks.map((m) => [m, true])),
             } as {
-              [key in keyof typeof _schema]: true | undefined;
+              [key in keyof typeof this._schema]: true | undefined;
             }).shape
           );
         } else {
-          return Z.class(_schema.omit(mask).shape);
+          return Z.class(this._schema.omit(mask).shape);
         }
       }
-      static partial = _schema.partial.bind(_schema);
-      static deepPartial = _schema.deepPartial.bind(_schema);
-      static passthrough = _schema.passthrough.bind(_schema);
-      static keyof = _schema.keyof.bind(_schema);
+      static partial = (mask: any) => this._schema.partial(mask);
+      static deepPartial = () => this._schema.deepPartial();
+      static passthrough = () => this._schema.passthrough();
+      static keyof = () => this._schema.keyof();
 
       // CAN create a sub-type
       static required() {
-        return this.extend(_schema.required().shape);
+        return this.extend(this._schema.required().shape);
       }
       static strict() {
-        return this.extend(_schema.strict().shape);
+        return this.extend(this._schema.strict().shape);
       }
       static strip() {
-        return this.extend(_schema.strip().shape);
+        return this.extend(this._schema.strip().shape);
       }
       static catchall(type: any) {
-        return this.extend(_schema.catchall(type).shape);
+        return this.extend(this._schema.catchall(type).shape);
       }
 
       // combinators
@@ -306,50 +315,51 @@ export const Z = {
       static describe(description: string) {}
 
       static parse(value: unknown, params?: Partial<ParseParams>) {
-        return new this(_schema.parse(value, params) as any);
+        return new this(this._schema.parse(value, params) as any);
       }
 
       static parseAsync(value: unknown, params?: Partial<ParseParams>) {
-        return _schema
+        return this._schema
           .parseAsync(value, params)
           .then((value) => new this(value as any));
       }
 
-      static _parse(input: ParseInput) {
-        return new this(_schema._parse(input) as any);
+      static _parse(input: ParseInput): ParseReturnType<any> {
+        const result = this._schema._parse(input);
+        if (isPromise(result)) {
+          return result.then((result) =>
+            _coerceParseResult(this as any, result)
+          );
+        } else {
+          return _coerceParseResult(this as any, result);
+        }
       }
 
       static _parseSync(input: ParseInput) {
-        return this._processParseResult(_schema._parseSync(input));
+        return _coerceParseResult(this as any, this._schema._parseSync(input));
       }
 
       static _parseAsync(input: ParseInput) {
-        return _schema._parseAsync(input).then(this._processParseResult);
-      }
-
-      static _processParseResult(result: SyncParseReturnType<any>) {
-        if (result.status === "valid" || result.status === "dirty") {
-          return {
-            status: result.status,
-            value: new this(result.value as any),
-          };
-        } else {
-          return result;
-        }
+        return this._schema
+          ._parseAsync(input)
+          .then((result) => _coerceParseResult(this as any, result));
       }
 
       static safeParse(
         value: unknown,
         params?: Partial<ParseParams>
       ): SafeParseReturnType<any, any> {
-        return coerceSafeParse(this as any, _schema.safeParse(value, params));
+        return coerceSafeParse(
+          this as any,
+          this._schema.safeParse(value, params)
+        );
       }
 
       static safeParseAsync(
         value: unknown,
         params?: Partial<ParseParams>
       ): Promise<SafeParseReturnType<any, any>> {
-        return _schema
+        return this._schema
           .safeParseAsync(value, params)
           .then((result) => coerceSafeParse(this as any, result));
       }
@@ -373,6 +383,20 @@ function coerceSafeParse<C extends ZodClass<any, any, any>>(
     return {
       success: true,
       data: new clazz(result.data) as InstanceType<C>,
+    };
+  } else {
+    return result;
+  }
+}
+
+function _coerceParseResult<C extends ZodClass<any, any, any>>(
+  cls: C,
+  result: SyncParseReturnType<any>
+): SyncParseReturnType<InstanceType<C>> {
+  if (result.status === "valid" || result.status === "dirty") {
+    return {
+      status: result.status,
+      value: new cls(result.value as any),
     };
   } else {
     return result;

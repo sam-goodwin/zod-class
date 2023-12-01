@@ -108,7 +108,6 @@ test("should inherit class methods", () => {
       return this.baz;
     }
   }
-
   const baz = new Baz({
     bar: 42,
     foo: "forty-two",
@@ -150,6 +149,7 @@ test("should support classes as properties in an object", () => {
     barNullableOptional: Bar.nullable().optional(),
     barOptionalNullable: Bar.optional().nullable(),
   });
+
   type XYZ = Z.infer<typeof XYZ>;
   const xyz: XYZ = {
     bar,
