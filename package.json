@@ -1,7 +1,7 @@
 {
   "name": "zod-class",
   "description": "Create classes from Zod Object schemas all in one line",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "repository": {
     "url": "https://github.com/sam-goodwin/zod-class"
   },
