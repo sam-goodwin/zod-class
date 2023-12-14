@@ -71,7 +71,6 @@ export class Order extends Z.class({
 Product.Id // 👈 Properties are also available in friendly pascal case directly on the class constructor
 ```
 
-
 ## Why?
 
 It can be annoying to always have redundant declarations for types and schemas:
