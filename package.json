@@ -1,7 +1,7 @@
 {
   "name": "zod-class",
   "description": "Create classes from Zod Object schemas all in one line",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "repository": {
     "url": "https://github.com/sam-goodwin/zod-class"
   },
@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "tsc -b",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest && cd ./test/pkg && pnpm i && pnpm build",
     "watch": "tsc -b -w"
   },
   "peerDependencies": {
