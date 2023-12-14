@@ -71,6 +71,7 @@ export class Order extends Z.class({
 Product.Id // 👈 Properties are also available in friendly pascal case directly on the class constructor
 ```
 
+
 ## Why?
 
 It can be annoying to always have redundant declarations for types and schemas:
@@ -100,3 +101,53 @@ export class Person extends Z.class({
 }
 ```
 
+
+
+## Workarounds
+
+Creating a class that adequately sub-types a Zod Schema is difficult because of how Zod is implemented. `zod-class` covers the most common use-cases but there are holes.
+
+If you encounter a problem with type errors, you can always workaround it with the `schema()` method.
+
+For example, if you have a function that expects a `ZodType<T>`:
+```ts
+function createDTO<T>(schema: ZodType<T>): DTO<T>;
+```
+
+And a class, `User`, constructed with `Z.class`:
+```ts
+class User extends Z.class({
+  username: z.string()
+}) {}
+
+```
+
+You should be able to just pass `User` in
+```ts
+const UserDTO = createDTO(User);
+```
+
+In some cases, this can error. To workaround, call `User.schema()` instead:
+```ts
+const UserDTO = createDTO(User.schema());
+```
+
+See relevant issue: [#17](https://github.com/sam-goodwin/zod-class/issues/17)
+
+2. `nullish` will not create a schema that returns an instance of the ZodClass
+
+ZodClass does not provide a type-safe implementation of `schema.nullish()`.
+
+```ts
+User.nullish().parse(value) 
+```
+
+This will not return an instance of `User`:
+```ts
+{ username: string } | null | undefined
+```
+
+Workaround with `User.schema()`
+```ts
+User.schema().nullish().parse(value) // User | null | undefined
+```
