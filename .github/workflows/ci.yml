@@ -1,6 +1,6 @@
 name: CI
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   build-and-test:
@@ -20,4 +20,4 @@ jobs:
     - name: Test
       run: pnpm run test
     - name: Compile tests
-      run: pnpm run tsc --project tsconfig.test.json
+      run: pnpm tsc --project tsconfig.test.json
