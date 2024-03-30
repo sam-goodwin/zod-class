@@ -165,6 +165,7 @@ test("static methods should be inherited", () => {
       return "foo";
     }
   }
+
   class Bar extends Foo.extend({
     bar: z.number(),
   }) {
@@ -226,6 +227,9 @@ test("static properties should plumb through", () => {
   class Bar extends Foo.extend({
     bar: z.number(),
   }) {}
+  Foo.staticProps
+
+  // type Keys = A extends (new (...args: any[]) => any) & infer Rest ? keyof Rest : never;
 
   Foo.Id;
   Bar.Id;
@@ -455,3 +459,13 @@ test("z.union([User, Person])", () => {
   expect(user).toBeInstanceOf(User);
   expect(person).toBeInstanceOf(Person);
 });
+
+test("optional object fields are optional", () => {
+  // see: https://github.com/sam-goodwin/zod-class/issues/22
+  class drat extends Z.class({
+    foo: z.string().optional(),
+  }) {}
+
+  const ab = {};
+  new drat(ab); 
+})

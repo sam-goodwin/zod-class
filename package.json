@@ -21,6 +21,9 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest && cd ./test/pkg && pnpm i && pnpm build",
     "watch": "tsc -b -w"
   },
+  "dependencies": {
+    "type-fest": "^4.14.0"
+  },
   "peerDependencies": {
     "zod": "^3"
   },
@@ -28,14 +31,12 @@
     "@tsconfig/node16": "^1.0.3",
     "@types/jest": "^29.5.4",
     "@types/node": "^16",
+    "bun": "^1.0.36",
     "jest": "^29.7.0",
     "prettier": "^2.8.8",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1",
-    "typescript": "^5.2.2",
+    "typescript": "^5.4.3",
     "zod": "3.20.2"
-  },
-  "dependencies": {
-    "type-fest": "^4.6.0"
   }
 }

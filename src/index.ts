@@ -1,14 +1,12 @@
-import { PascalCase } from "type-fest";
+import type { PascalCase } from "type-fest";
 
 import {
   ParseInput,
   ParseParams,
   ParseReturnType,
-  RefinementCtx,
   SafeParseReturnType,
   SyncParseReturnType,
   ZodArray,
-  ZodEffects,
   ZodFunction,
   ZodIntersection,
   ZodLazy,
@@ -25,14 +23,16 @@ import {
   ZodTypeAny,
   ZodUnion,
   object,
-  z,
+  z, 
 } from "zod";
+
 import { toPascalCase } from "./to-pascal-case.js";
-import { isPromise } from "util/types";
+import { isPromise } from "node:util/types";
 
 const IS_ZOD_CLASS = Symbol.for("zod-class");
 
 type Ctor<T = any> = {
+  [key: string]: any;
   new (input: any): T;
 };
 
@@ -42,6 +42,7 @@ export interface ZodClass<
   Shape extends ZodRawShape = ZodRawShape
 > extends ZodType<Instance> {
   shape: Shape;
+  staticProps: StaticProperties<Shape>;
 
   pick<Mask extends keyof Shape>(...mask: Mask[]): Z.Class<Pick<Shape, Mask>>;
   pick<
@@ -82,9 +83,9 @@ export interface ZodClass<
   extend<Super extends Ctor, ChildShape extends ZodRawShape>(
     this: Super,
     shape: ChildShape
-  ): StaticProperties<ChildShape> & {
-    [k in keyof Super]: Super[k];
-  } & ZodClass<
+  ): StaticProperties<ChildShape> & ({
+    [k in Exclude<keyof Super, keyof z.ZodObject<any>>]: Super[k];
+  }) & ZodClass<
       Z.infer<ZodObject<ChildShape>> & ConstructorParameters<Super>[0],
       Z.infer<ZodObject<ChildShape>> & InstanceType<Super>,
       Omit<Shape, keyof ChildShape> & ChildShape
@@ -146,7 +147,7 @@ export declare namespace Z {
     ? { [i in keyof T]: Z.infer<T[i]> }
     : T extends ZodRecord<infer Key, infer Value>
     ? {
-        [k in Z.infer<Key>]: Z.infer<Value>;
+        [k in Extract<Z.infer<Key>, string | number | symbol>]: Z.infer<Value>;
       }
     : T extends ZodMap<infer Key, infer Value>
     ? Map<Z.infer<Key>, Z.infer<Value>>
@@ -167,10 +168,6 @@ type StaticProperties<Shape extends ZodRawShape> = {
   [property in keyof Shape as PascalCase<property>]: Shape[property];
 };
 
-export interface Z {
-  class<Shape extends ZodRawShape>(shape: Shape): Z.Class<Shape>;
-}
-
 export declare namespace Z {
   export type Class<Shape extends ZodRawShape> = StaticProperties<Shape> &
     ZodClass<Z.infer<ZodObject<Shape>>, Z.infer<ZodObject<Shape>>, Shape>;
@@ -179,15 +176,7 @@ export declare namespace Z {
 export const Z = {
   class<T extends ZodRawShape>(
     shape: T
-  ): {
-    [property in keyof T as PascalCase<property>]: T[property];
-  } & ZodClass<
-    {
-      [k in keyof T]: Z.infer<T[k]>;
-    },
-    Z.infer<ZodObject<T>>,
-    T
-  > {
+  ): Z.Class<T> {
     const clazz = class {
       static [IS_ZOD_CLASS]: true = true;
       static schema() {
