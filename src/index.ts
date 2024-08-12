@@ -27,7 +27,6 @@ import {
 } from "zod";
 
 import { toPascalCase } from "./to-pascal-case.js";
-import { isPromise } from "node:util/types";
 
 const IS_ZOD_CLASS = Symbol.for("zod-class");
 
@@ -315,7 +314,7 @@ export const Z = {
 
       static _parse(input: ParseInput): ParseReturnType<any> {
         const result = this._schema._parse(input);
-        if (isPromise(result)) {
+        if (result instanceof Promise) {
           return result.then((result) =>
             _coerceParseResult(this as any, result)
           );
