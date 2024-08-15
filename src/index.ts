@@ -314,7 +314,7 @@ export const Z = {
 
       static _parse(input: ParseInput): ParseReturnType<any> {
         const result = this._schema._parse(input);
-        if (result instanceof Promise) {
+        if (isPromise(result)) {
           return result.then((result) =>
             _coerceParseResult(this as any, result)
           );
@@ -400,3 +400,8 @@ type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (
 type ZodValue<T extends ZodType> = T extends ZodType<infer Output>
   ? UnionToIntersection<Output>
   : never;
+
+
+function isPromise(obj: any): obj is Promise<any> {
+  return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
+}
