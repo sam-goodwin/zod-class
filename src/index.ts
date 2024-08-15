@@ -27,7 +27,6 @@ import {
 } from "zod";
 
 import { toPascalCase } from "./to-pascal-case.js";
-import { isPromise } from "node:util/types";
 
 const IS_ZOD_CLASS = Symbol.for("zod-class");
 
@@ -401,3 +400,8 @@ type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (
 type ZodValue<T extends ZodType> = T extends ZodType<infer Output>
   ? UnionToIntersection<Output>
   : never;
+
+
+function isPromise(obj: any): obj is Promise<any> {
+  return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
+}
