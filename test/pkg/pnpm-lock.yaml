@@ -1,35 +1,41 @@
-lockfileVersion: '6.0'
+lockfileVersion: '9.0'
 
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-dependencies:
-  zod:
-    specifier: ^3.22.4
-    version: 3.22.4
-  zod-class:
-    specifier: file:../../
-    version: file:../..(zod@3.22.4)
+importers:
+
+  .:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.22.4
+      zod-class:
+        specifier: file:../../
+        version: file:../..(zod@3.22.4)
 
 packages:
 
-  /type-fest@4.14.0:
+  type-fest@4.14.0:
     resolution: {integrity: sha512-on5/Cw89wwqGZQu+yWO0gGMGu8VNxsaW9SB2HE8yJjllEk7IDTwnSN1dUVldYILhYPN5HzD7WAaw2cc/jBfn0Q==}
     engines: {node: '>=16'}
-    dev: false
 
-  /zod@3.22.4:
-    resolution: {integrity: sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==}
-    dev: false
-
-  file:../..(zod@3.22.4):
+  zod-class@file:../..:
     resolution: {directory: ../.., type: directory}
-    id: file:../..
-    name: zod-class
     peerDependencies:
       zod: ^3
+
+  zod@3.22.4:
+    resolution: {integrity: sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==}
+
+snapshots:
+
+  type-fest@4.14.0: {}
+
+  zod-class@file:../..(zod@3.22.4):
     dependencies:
       type-fest: 4.14.0
       zod: 3.22.4
-    dev: false
+
+  zod@3.22.4: {}
