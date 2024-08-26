@@ -23,7 +23,7 @@ import {
   ZodTypeAny,
   ZodUnion,
   object,
-  z, 
+  z,
 } from "zod";
 
 import { toPascalCase } from "./to-pascal-case.js";
@@ -82,9 +82,9 @@ export interface ZodClass<
   extend<Super extends Ctor, ChildShape extends ZodRawShape>(
     this: Super,
     shape: ChildShape
-  ): StaticProperties<ChildShape> & ({
+  ): StaticProperties<ChildShape> & {
     [k in Exclude<keyof Super, keyof z.ZodObject<any>>]: Super[k];
-  }) & ZodClass<
+  } & ZodClass<
       Z.infer<ZodObject<ChildShape>> & ConstructorParameters<Super>[0],
       Z.infer<ZodObject<ChildShape>> & InstanceType<Super>,
       Omit<Shape, keyof ChildShape> & ChildShape
@@ -173,14 +173,13 @@ export declare namespace Z {
 }
 
 export const Z = {
-  class<T extends ZodRawShape>(
-    shape: T
-  ): Z.Class<T> {
+  class<T extends ZodRawShape>(shape: T): Z.Class<T> {
     const clazz = class {
       static [IS_ZOD_CLASS]: true = true;
       static schema() {
         return this;
       }
+      static innerType = this;
       static shape = shape;
       static _schema = object(shape);
 
@@ -401,7 +400,10 @@ type ZodValue<T extends ZodType> = T extends ZodType<infer Output>
   ? UnionToIntersection<Output>
   : never;
 
-
 function isPromise(obj: any): obj is Promise<any> {
-  return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
+  return (
+    !!obj &&
+    (typeof obj === "object" || typeof obj === "function") &&
+    typeof obj.then === "function"
+  );
 }

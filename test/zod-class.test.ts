@@ -155,6 +155,9 @@ test("should support classes as properties in an object", () => {
     bar,
     Baz: baz,
   };
+  const parsedXYZ = XYZ.parse(xyz);
+  expect(parsedXYZ).toEqual(xyz);
+  expect(parsedXYZ.Baz).toBeInstanceOf(Baz);
 });
 
 test("static methods should be inherited", () => {
@@ -227,7 +230,7 @@ test("static properties should plumb through", () => {
   class Bar extends Foo.extend({
     bar: z.number(),
   }) {}
-  Foo.staticProps
+  Foo.staticProps;
 
   // type Keys = A extends (new (...args: any[]) => any) & infer Rest ? keyof Rest : never;
 
@@ -467,5 +470,5 @@ test("optional object fields are optional", () => {
   }) {}
 
   const ab = {};
-  new drat(ab); 
-})
+  new drat(ab);
+});
