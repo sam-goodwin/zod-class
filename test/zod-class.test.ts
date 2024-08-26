@@ -148,7 +148,6 @@ test("should support classes as properties in an object", () => {
     bar: Bar.nullable(),
     barNullableOptional: Bar.nullable().optional(),
     barOptionalNullable: Bar.optional().nullable(),
-    barNullish: Bar.nullish(),
   });
 
   type XYZ = Z.infer<typeof XYZ>;

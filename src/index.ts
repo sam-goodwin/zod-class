@@ -92,7 +92,6 @@ export interface ZodClass<
 
   optional<Self extends ZodTypeAny>(this: Self): ZodOptional<Self>;
   nullable<Self extends ZodTypeAny>(this: Self): ZodNullable<Self>;
-  nullish<Self extends ZodTypeAny>(this: Self): ZodNullable<ZodOptional<Self>>;
 
   array<Self extends ZodType>(this: Self): ZodArray<Self>;
   promise<Self extends ZodType>(this: Self): ZodPromise<Self>;
