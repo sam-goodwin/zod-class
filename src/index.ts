@@ -85,8 +85,8 @@ export interface ZodClass<
   ): StaticProperties<ChildShape> & {
     [k in Exclude<keyof Super, keyof z.ZodObject<any>>]: Super[k];
   } & ZodClass<
-      Z.infer<ZodObject<ChildShape>> & ConstructorParameters<Super>[0],
-      Z.infer<ZodObject<ChildShape>> & InstanceType<Super>,
+      Z.output<ZodObject<ChildShape>> & ConstructorParameters<Super>[0],
+      Z.output<ZodObject<ChildShape>> & InstanceType<Super>,
       Omit<Shape, keyof ChildShape> & ChildShape
     >;
 
@@ -118,49 +118,88 @@ export interface ZodClass<
   ): Promise<SafeParseReturnType<Instance, T>>;
 
   new (data: Members): Instance;
-  new (data: z.input<ZodObject<Shape>>): Instance;
 }
 
 type OptionalKeys<Shape> = {
-  [k in keyof Shape]: undefined extends Z.infer<Shape[k]> ? k : never;
+  [k in keyof Shape]: undefined extends Z.output<Shape[k]> ? k : never;
 }[keyof Shape];
 
 export declare namespace Z {
-  export type infer<T> = T extends new (...args: any[]) => infer R
+  export type output<T> = T extends new (...args: any[]) => infer R
     ? R
     : T extends ZodObject<infer Shape>
     ? {
         [k in keyof Pick<
           Shape,
           Exclude<keyof Shape, OptionalKeys<Shape>>
-        >]: Z.infer<Shape[k]>;
+        >]: Z.output<Shape[k]>;
       } & {
-        [k in OptionalKeys<Shape>]+?: Z.infer<Shape[k]>;
+        [k in OptionalKeys<Shape>]+?: Z.output<Shape[k]>;
       }
     : T extends ZodArray<infer I>
-    ? Z.infer<I>[]
+    ? Z.output<I>[]
     : T extends ZodOptional<infer T>
-    ? Z.infer<T> | undefined
+    ? Z.output<T> | undefined
     : T extends ZodNullable<infer T>
-    ? Z.infer<T> | null
+    ? Z.output<T> | null
     : T extends ZodTuple<infer T>
-    ? { [i in keyof T]: Z.infer<T[i]> }
+    ? { [i in keyof T]: Z.output<T[i]> }
     : T extends ZodRecord<infer Key, infer Value>
     ? {
-        [k in Extract<Z.infer<Key>, string | number | symbol>]: Z.infer<Value>;
+        [k in Extract<
+          Z.output<Key>,
+          string | number | symbol
+        >]: Z.output<Value>;
       }
     : T extends ZodMap<infer Key, infer Value>
-    ? Map<Z.infer<Key>, Z.infer<Value>>
+    ? Map<Z.output<Key>, Z.output<Value>>
     : T extends ZodSet<infer Item>
-    ? Set<Z.infer<Item>>
+    ? Set<Z.output<Item>>
     : T extends ZodFunction<infer Args, infer Output>
-    ? (...args: Z.infer<Args>) => Z.infer<Output>
+    ? (...args: Z.output<Args>) => Z.output<Output>
     : T extends ZodLazy<infer T>
-    ? Z.infer<T>
+    ? Z.output<T>
     : T extends ZodPromise<infer T>
-    ? Promise<Z.infer<T>>
+    ? Promise<Z.output<T>>
     : T extends ZodType<any, any, any>
-    ? z.infer<T>
+    ? z.output<T>
+    : never;
+
+  export type input<T> = T extends new (...args: any[]) => infer R
+    ? R
+    : T extends ZodObject<infer Shape>
+    ? {
+        [k in keyof Pick<
+          Shape,
+          Exclude<keyof Shape, OptionalKeys<Shape>>
+        >]: Z.input<Shape[k]>;
+      } & {
+        [k in OptionalKeys<Shape>]+?: Z.input<Shape[k]>;
+      }
+    : T extends ZodArray<infer I>
+    ? Z.input<I>[]
+    : T extends ZodOptional<infer T>
+    ? Z.input<T> | undefined
+    : T extends ZodNullable<infer T>
+    ? Z.input<T> | null
+    : T extends ZodTuple<infer T>
+    ? { [i in keyof T]: Z.input<T[i]> }
+    : T extends ZodRecord<infer Key, infer Value>
+    ? {
+        [k in Extract<Z.input<Key>, string | number | symbol>]: Z.input<Value>;
+      }
+    : T extends ZodMap<infer Key, infer Value>
+    ? Map<Z.input<Key>, Z.input<Value>>
+    : T extends ZodSet<infer Item>
+    ? Set<Z.input<Item>>
+    : T extends ZodFunction<infer Args, infer Output>
+    ? (...args: Z.input<Args>) => Z.input<Output>
+    : T extends ZodLazy<infer T>
+    ? Z.input<T>
+    : T extends ZodPromise<infer T>
+    ? Promise<Z.input<T>>
+    : T extends ZodType<any, any, any>
+    ? z.input<T>
     : never;
 }
 
@@ -170,7 +209,7 @@ type StaticProperties<Shape extends ZodRawShape> = {
 
 export declare namespace Z {
   export type Class<Shape extends ZodRawShape> = StaticProperties<Shape> &
-    ZodClass<Z.infer<ZodObject<Shape>>, Z.infer<ZodObject<Shape>>, Shape>;
+    ZodClass<Z.input<ZodObject<Shape>>, Z.output<ZodObject<Shape>>, Shape>;
 }
 
 export const Z = {
