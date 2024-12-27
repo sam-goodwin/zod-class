@@ -118,6 +118,7 @@ export interface ZodClass<
   ): Promise<SafeParseReturnType<Instance, T>>;
 
   new (data: Members): Instance;
+  new (data: z.input<ZodObject<Shape>>): Instance;
 }
 
 type OptionalKeys<Shape> = {
@@ -184,7 +185,8 @@ export const Z = {
       static _schema = object(shape);
 
       constructor(value: ZodValue<ZodObject<T>>) {
-        Object.assign(this, clazz._schema.parse(value));
+        const parsed = clazz._schema.parse(value);
+        return _newInstance(this.constructor, parsed);
       }
 
       static merge = this.extend.bind(this);
@@ -302,13 +304,14 @@ export const Z = {
       static describe(description: string) {}
 
       static parse(value: unknown, params?: Partial<ParseParams>) {
-        return new this(this._schema.parse(value, params) as any);
+        const parsed = this._schema.parse(value, params);
+        return _newInstance(this, parsed);
       }
 
       static parseAsync(value: unknown, params?: Partial<ParseParams>) {
         return this._schema
           .parseAsync(value, params)
-          .then((value) => new this(value as any));
+          .then((parsed) => _newInstance(this, parsed));
       }
 
       static _parse(input: ParseInput): ParseReturnType<any> {
@@ -374,6 +377,12 @@ function coerceSafeParse<C extends ZodClass<any, any, any>>(
   } else {
     return result;
   }
+}
+
+function _newInstance(clazz: any, parsed: any) {
+  const instance = Object.create(clazz.prototype);
+  Object.assign(instance, parsed);
+  return instance;
 }
 
 function _coerceParseResult<C extends ZodClass<any, any, any>>(

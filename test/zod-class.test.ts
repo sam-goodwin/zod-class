@@ -198,9 +198,7 @@ test("should be able to reference a ZodClass's property schemas", () => {
   }
 
   const o1 = new Order({
-    // @ts-expect-error
     id: "1",
-    // @ts-expect-error
     productId: "2",
   });
   expect(o1.getMessage()).toEqual(["1", "2"]);
@@ -471,4 +469,27 @@ test("optional object fields are optional", () => {
 
   const ab = {};
   new drat(ab);
+});
+
+// see: https://github.com/sam-goodwin/zod-class/issues/31
+test.only("should support transform in schema", async () => {
+  class Test extends Z.class({
+    prop: z.enum(['true', 'false']).transform((val) => val === 'true'),
+  }) {}
+
+  const input = { prop: 'true' } as const;
+
+  // This should work and not have any type errors
+  const instance = new Test(input);
+  expect(instance.prop).toBe(true);
+  expect(instance).toBeInstanceOf(Test);
+
+  // This should also work and not throw
+  const parsed = Test.parse(input);
+  expect(parsed.prop).toBe(true);
+  expect(parsed).toBeInstanceOf(Test);
+
+  const asyncParsed = await Test.parseAsync(input)
+  expect(asyncParsed.prop).toBe(true);
+  expect(asyncParsed).toBeInstanceOf(Test);
 });
