@@ -150,7 +150,7 @@ test("should support classes as properties in an object", () => {
     barOptionalNullable: Bar.optional().nullable(),
   });
 
-  type XYZ = Z.infer<typeof XYZ>;
+  type XYZ = Z.output<typeof XYZ>;
   const xyz: XYZ = {
     bar,
     Baz: baz,
@@ -472,24 +472,59 @@ test("optional object fields are optional", () => {
 });
 
 // see: https://github.com/sam-goodwin/zod-class/issues/31
-test.only("should support transform in schema", async () => {
-  class Test extends Z.class({
-    prop: z.enum(['true', 'false']).transform((val) => val === 'true'),
-  }) {}
+describe("transforms", () => {
+  test("should support transform in schema", async () => {
+    class Test extends Z.class({
+      prop: z.enum(["true", "false"]).transform((value) => value === "true"),
+    }) {}
 
-  const input = { prop: 'true' } as const;
+    const input = { prop: "true" } as const;
 
-  // This should work and not have any type errors
-  const instance = new Test(input);
-  expect(instance.prop).toBe(true);
-  expect(instance).toBeInstanceOf(Test);
+    // This should work and not have any type errors
+    {
+      const instance = new Test(input);
+      expect(instance.prop).toBe(true);
+      expect(instance).toBeInstanceOf(Test);
+    }
 
-  // This should also work and not throw
-  const parsed = Test.parse(input);
-  expect(parsed.prop).toBe(true);
-  expect(parsed).toBeInstanceOf(Test);
+    // This should also work and not throw
+    {
+      const instance = Test.parse(input);
+      expect(instance.prop).toBe(true);
+      expect(instance).toBeInstanceOf(Test);
+    }
 
-  const asyncParsed = await Test.parseAsync(input)
-  expect(asyncParsed.prop).toBe(true);
-  expect(asyncParsed).toBeInstanceOf(Test);
+    {
+      const instance = await Test.parseAsync(input);
+      expect(instance.prop).toBe(true);
+      expect(instance).toBeInstanceOf(Test);
+    }
+
+    {
+      const instance = Test.safeParse(input);
+      if (instance.success === false) {
+        expect(instance).not.toHaveProperty("error");
+        expect(instance.success).toBe(true);
+        return;
+      }
+      expect(instance.data.prop).toBe(true);
+    }
+
+    {
+      const instance = await Test.safeParseAsync(input);
+      if (instance.success === false) {
+        expect(instance).not.toHaveProperty("error");
+        expect(instance.success).toBe(true);
+        return;
+      }
+      expect(instance.data.prop).toBe(true);
+    }
+  });
+
+  test("constructor should expect the schemas input,not output", () => {
+    try {
+      // @ts-expect-error should be a type error
+      new Test({ prop: true });
+    } catch {}
+  });
 });
