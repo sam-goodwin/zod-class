@@ -372,7 +372,7 @@ function coerceSafeParse<C extends ZodClass<any, any, any>>(
   if (result.success) {
     return {
       success: true,
-      data: new clazz(result.data) as InstanceType<C>,
+      data: _newInstance(clazz, result.data) as InstanceType<C>,
     };
   } else {
     return result;
